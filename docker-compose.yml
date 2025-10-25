@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+  keycloak-db:
+    image: postgres:16-alpine
+    container_name: keycloak-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: supersecret_db_password   # <-- ЗАМЕНИ
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    networks:
+      - traefik_default
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.5
+    container_name: keycloak
+    restart: unless-stopped
+    command:
+      - start
+      # опционально можешь включить proxy=edge, если Traefik терминирует TLS
+      # но ниже мы уже выставляем через env KC_PROXY=edge
+    environment:
+      # базовые настройки Keycloak
+      KC_PROXY: edge
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: auth.dckr-nl.nagayev.ru
+      KC_HOSTNAME_STRICT: "true"
+
+      # админка (будет использована единожды при первом старте)
+      KEYCLOAK_ADMIN: admin                   # <-- ЗАДАЙ
+      KEYCLOAK_ADMIN_PASSWORD: supersecret    # <-- ЗАДАЙ
+
+      # подключение к Postgres
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: supersecret_db_password # тот же пароль, что выше
+
+    depends_on:
+      - keycloak-db
+
+    networks:
+      - traefik_default
+
+    labels:
+      # Говорим Traefik, что этот сервис надо прокинуть наружу
+      - "traefik.enable=true"
+
+      # === Роутер (HTTP -> HTTPS redirect можно сделать глобально, но я опишу только HTTPS) ===
+      - "traefik.http.routers.keycloak.rule=Host(`auth.your-domain.ru`)"
+      - "traefik.http.routers.keycloak.entrypoints=websecure"
+      - "traefik.http.routers.keycloak.tls=true"
+
+      # если Traefik сам получает сертификаты через ACME, обычно достаточно:
+      - "traefik.http.routers.keycloak.tls.certresolver=letsencrypt"
+      # ^^ ЗАМЕНИ myresolver на то, как у тебя называется resolver в traefik (часто acme, letsencrypt и т.д.)
+
+      # === Сервис ===
+      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
+
+      # (необязательно) включить компрессию ответа
+      - "traefik.http.middlewares.keycloak-compress.compress=true"
+      - "traefik.http.routers.keycloak.middlewares=keycloak-compress"
+
+volumes:
+  keycloak_db_data:
+
+networks:
+  traefik_default:
+    external: true
