@@ -27,9 +27,9 @@ services:
       KC_HTTP_ENABLED: "true"
 
       # Внешний адрес
-      KC_HOSTNAME: auth.dckr-nl.your-domain.ru
-      KC_HOSTNAME_URL: https://auth.dckr-nl.your-domain.ru
-      KC_HOSTNAME_ADMIN_URL: https://auth.dckr-nl.your-domain.ru
+      KC_HOSTNAME: auth.service.your-domain.ru
+      KC_HOSTNAME_URL: https://auth.service.your-domain.ru
+      KC_HOSTNAME_ADMIN_URL: https://auth.service.your-domain.ru
 
       # Пока не будем душить strict, чтобы не получить 400
       KC_HOSTNAME_STRICT: "false"
@@ -55,7 +55,7 @@ services:
       - "traefik.enable=true"
 
       # роутер
-      - "traefik.http.routers.keycloak.rule=Host(`auth.dckr-nl.your-domain.ru`)"
+      - "traefik.http.routers.keycloak.rule=Host(`auth.service.your-domain.ru`)"
       - "traefik.http.routers.keycloak.entrypoints=websecure"
       - "traefik.http.routers.keycloak.tls=true"
       - "traefik.http.routers.keycloak.tls.certresolver=letsencrypt"
